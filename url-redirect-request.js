@@ -98,7 +98,7 @@ let endpoint = argument['endpoint'];
 let status = argument['status'] || 302;
 let body = argument['body'] || "Redirected.";
 let theaders = argument['headers'] || {};
-let netloc = status ? new MyURL(endpoint).netloc : null;
+let netloc = endpoint != undefined ? new MyURL(endpoint).netloc : null;
 let matched = url.match(regex);
 if (matched != null) {
     console.log("Matched.");
