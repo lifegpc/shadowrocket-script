@@ -97,7 +97,7 @@ let regex = new RegExp(argument['regex'], 'i');
 let endpoint = argument['endpoint'];
 let status = argument['status'] || 302;
 let body = argument['body'] || "Redirected.";
-let headers = argument['headers'] || {};
+let theaders = argument['headers'] || {};
 let netloc = status ? new MyURL(endpoint).netloc : null;
 let matched = url.match(regex);
 if (matched != null) {
@@ -106,13 +106,14 @@ if (matched != null) {
     let u = new MyURL(nurl, url);
     url = u.toString();
     if (netloc != null) {
-        headers['Host'] = netloc
-        headers['X-LOCATION'] = url;
-        console.log("New Headers:", headers);
-        $done({url: endpoint, headers});
+        theaders['Host'] = netloc
+        theaders['X-LOCATION'] = url;
+        console.log("New Headers:", theaders);
+        $done({url: endpoint, headers: theaders});
     } else {
-        headers['location'] = url;
-        $done({response: {status, body, headers}})
+        theaders['location'] = url;
+        console.log("New Headers:", theaders);
+        $done({response: {status, body, headers: theaders}})
     }
 } else {
     $done($request);
