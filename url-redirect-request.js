@@ -95,18 +95,25 @@ console.log(url);
 let argument = JSON.parse($argument);
 let regex = new RegExp(argument['regex'], 'i');
 let endpoint = argument['endpoint'];
-let netloc = new MyURL(endpoint).netloc;
+let status = argument['status'] || 302;
+let body = argument['body'] || "Redirected.";
+let headers = argument['headers'] || {};
+let netloc = status ? new MyURL(endpoint).netloc : null;
 let matched = url.match(regex);
 if (matched != null) {
     console.log("Matched.");
     let nurl = decodeURIComponent(matched[1]);
     let u = new MyURL(nurl, url);
     url = u.toString();
-    headers = {}
-    headers['Host'] = netloc
-    headers['X-LOCATION'] = url;
-    console.log("New Headers:", headers);
-    $done({url: endpoint, headers});
+    if (netloc != null) {
+        headers['Host'] = netloc
+        headers['X-LOCATION'] = url;
+        console.log("New Headers:", headers);
+        $done({url: endpoint, headers});
+    } else {
+        headers['location'] = url;
+        $done({response: {status, body, headers}})
+    }
 } else {
     $done($request);
 }
