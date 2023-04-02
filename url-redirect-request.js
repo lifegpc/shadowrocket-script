@@ -93,13 +93,27 @@ let url = $request.url;
 console.log(headers);
 console.log(url);
 let argument = JSON.parse($argument);
-let regex = new RegExp(argument['regex'], 'i');
+/**@type {Array<RegExp>} */
+let regexs = [];
+if (Array.isArray(argument['regex'])) {
+    for (let r of argument['regex']) {
+        regexs.push(new RegExp(r, 'i'));
+    }
+} else {
+    regexs.push(new RegExp(argument['regex'], 'i'));
+}
 let endpoint = argument['endpoint'];
 let status = argument['status'] || 302;
 let body = argument['body'] || "Redirected.";
 let theaders = argument['headers'] || {};
 let netloc = endpoint != undefined ? new MyURL(endpoint).netloc : null;
-let matched = url.match(regex);
+let matched = null;
+for (let r of regexs) {
+    matched = url.match(r);
+    if (matched != null) {
+        break;
+    }
+}
 if (matched != null) {
     console.log("Matched.");
     let nurl = decodeURIComponent(matched[1]);
