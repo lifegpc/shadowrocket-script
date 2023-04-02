@@ -92,43 +92,89 @@ let headers = $request.headers;
 let url = $request.url;
 console.log(headers);
 console.log(url);
-let argument = JSON.parse($argument);
-/**@type {Array<RegExp>} */
-let regexs = [];
-if (Array.isArray(argument['regex'])) {
-    for (let r of argument['regex']) {
-        regexs.push(new RegExp(r, 'i'));
-    }
-} else {
-    regexs.push(new RegExp(argument['regex'], 'i'));
+/**@returns {Promise<{status: number, headers: Object.<string, string>, data: string | Uint8Array}>} */
+function fetch_data(url) {
+    return new Promise((resolve, reject) => {
+        $httpClient.get(url, (error, res, data) => {
+            if (error != null) {
+                reject(error);
+                return;
+            }
+            resolve({ status: res.status, headers: res.headers, data })
+        })
+    })
 }
-let endpoint = argument['endpoint'];
-let status = argument['status'] || 302;
-let body = argument['body'] || "Redirected.";
-let theaders = argument['headers'] || {};
-let netloc = endpoint != undefined ? new MyURL(endpoint).netloc : null;
-let matched = null;
-for (let r of regexs) {
-    matched = url.match(r);
-    if (matched != null) {
-        break;
-    }
-}
-if (matched != null) {
-    console.log("Matched.");
-    let nurl = decodeURIComponent(matched[1]);
-    let u = new MyURL(nurl, url);
-    url = u.toString();
-    if (netloc != null) {
-        theaders['Host'] = netloc
-        theaders['X-LOCATION'] = url;
-        console.log("New Headers:", theaders);
-        $done({url: endpoint, headers: theaders});
+async function get_remote_argument(url, key, cached) {
+    let data = $persistentStore.read(key);
+    let now = new Date().getTime();
+    if (data == null) {
+        let d = await fetch_data(url);
+        console.log(d);
+        data = { data: JSON.parse(d.data), cached_time: now };
+        $persistentStore.write(JSON.stringify(data), key);
     } else {
-        theaders['location'] = url;
-        console.log("New Headers:", theaders);
-        $done({response: {status, body, headers: theaders}})
+        data = JSON.parse(data);
+        let cached_time = data['cached_time'];
+        if (cached_time + cached < now) {
+            let d = await fetch_data(url);
+            console.log(d);
+            data = { data: JSON.parse(d.data), cached_time: now };
+            $persistentStore.write(JSON.stringify(data), key);
+        }
     }
-} else {
-    $done($request);
+    return data.data;
 }
+async function get_argument() {
+    if ($argument.startsWith('{')) {
+        return JSON.parse($argument);
+    } else {
+        return await get_remote_argument($argument, $argument, 3600000);
+    }
+}
+async function main() {
+    let argument = await get_argument();
+    /**@type {Array<RegExp>} */
+    let regexs = [];
+    if (Array.isArray(argument['regex'])) {
+        for (let r of argument['regex']) {
+            regexs.push(new RegExp(r, 'i'));
+        }
+    } else {
+        regexs.push(new RegExp(argument['regex'], 'i'));
+    }
+    let endpoint = argument['endpoint'];
+    let status = argument['status'] || 302;
+    let body = argument['body'] || "Redirected.";
+    let theaders = argument['headers'] || {};
+    let netloc = endpoint != undefined ? new MyURL(endpoint).netloc : null;
+    let matched = null;
+    for (let r of regexs) {
+        matched = url.match(r);
+        if (matched != null) {
+            break;
+        }
+    }
+    if (matched != null) {
+        console.log("Matched.");
+        let nurl = decodeURIComponent(matched[1]);
+        let u = new MyURL(nurl, url);
+        url = u.toString();
+        if (netloc != null) {
+            theaders['Host'] = netloc
+            theaders['X-LOCATION'] = url;
+            console.log("New Headers:", theaders);
+            $done({ url: endpoint, headers: theaders });
+        } else {
+            theaders['location'] = url;
+            console.log("New Headers:", theaders);
+            $done({ response: { status, body, headers: theaders } })
+        }
+    } else {
+        $done($request);
+    }
+}
+
+main().catch((error) => {
+    console.log(error);
+    $done({})
+})
