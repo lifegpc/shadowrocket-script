@@ -124,15 +124,75 @@ async function get_remote_argument(url, key, cached) {
     }
     return data.data;
 }
-async function get_argument() {
-    if ($argument.startsWith('{')) {
-        return JSON.parse($argument);
-    } else {
-        return await get_remote_argument($argument, $argument, 3600000);
+function get_args() {
+    let a = [];
+    let d = {};
+    /**@type {Array<string>}*/
+    let s = $argument.split('|');
+    for (let i of s) {
+        let l = i.split('=');
+        if (l.length == 1) {
+            a.push(i);
+        } else {
+            let k = l[0];
+            let v = l.slice(1).join('=');
+            if (v.startsWith("int:")) {
+                v = parseInt(v.slice(4));
+            } else if (v.startsWith("bool:")) {
+                v = v.slice(5).toLowerCase();
+                v = v === "true";
+            } else if (v.startsWith("map:")) {
+                let ov = v.slice(4).split(';');
+                v = {};
+                let last_key = null;
+                for (let iv of ov) {
+                    let ivv = iv.split(':');
+                    if (ivv.length > 1) {
+                        last_key = ivv[0];
+                        let kv = ivv.slice(1).join(":");
+                        v[last_key] = kv;
+                    } else if (last_key != null) {
+                        v[last_key] += ";" + iv;
+                    }
+                }
+            }
+            d[k] = v;
+        }
     }
+    if (a.length) {
+        if (d['url'] == undefined) {
+            for (let i of a) {
+                if (i.startsWith("http://") || i.startsWith("https://")) {
+                    d['url'] = i;
+                    break;
+                }
+            }
+        }
+    }
+    return d;
+}
+async function get_argument() {
+    let data = {};
+    if ($argument.startsWith('{')) {
+        data = JSON.parse($argument);
+    } else {
+        data = get_args();
+        console.log(data);
+    }
+    let url = data['url'];
+    if (typeof url == "string") {
+        let key = data['key'] || url;
+        let cached = data['cached'];
+        if (typeof cached != "number") {
+            cached = 3600000;
+        }
+        return await get_remote_argument(url, key, cached);
+    }
+    return data;
 }
 async function main() {
     let argument = await get_argument();
+    console.log(argument);
     /**@type {Array<RegExp>} */
     let regexs = [];
     if (Array.isArray(argument['regex'])) {
