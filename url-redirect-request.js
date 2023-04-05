@@ -143,21 +143,20 @@ function parse_remove_query_rule(o) {
         let rule = new RegExp(`(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
         return { basic, whitelist, rules: [{ rule }] }
     } else if (Array.isArray(rules)) {
-        let rules = [];
+        let rrules = [];
         for (let r of rules) {
             if (typeof r == "string") {
                 let rule = new RegExp(`(?:[^&]*&)*?(${r}\\=[^&]*&?).*`, "i");
-                rules.push({ rule });
+                rrules.push({ rule });
             } else {
                 let rule = new RegExp(`(?:[^&]*&)*?(${r['rule']}\\=[^&]*&?).*`, "i");
                 let pos = r['pos'];
-                rules.push({ rule, pos });
+                rrules.push({ rule, pos });
             }
         }
-        return { basic, whitelist, rules }
+        return { basic, whitelist, rules: rrules }
     } else {
         let rule = new RegExp(`(?:[^&]*&)*?(${rules['rule']}\\=[^&]*&?).*`, "i");
-        let whitelist = rules['whitelist'];
         let pos = rules['pos'];
         return { basic, whitelist, rules: [{ rule, pos }] };
     }
