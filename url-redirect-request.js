@@ -141,7 +141,7 @@ function parse_remove_query_rule(o) {
     let rules = o['rules'];
     if (typeof rules == "string") {
         let rule = new RegExp(`(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
-        return { whitelist, rules: [{ rule }] }
+        return { basic, whitelist, rules: [{ rule }] }
     } else if (Array.isArray(rules)) {
         let rules = [];
         for (let r of rules) {
@@ -154,12 +154,12 @@ function parse_remove_query_rule(o) {
                 rules.push({ rule, pos });
             }
         }
-        return { rules }
+        return { basic, whitelist, rules }
     } else {
         let rule = new RegExp(`(?:[^&]*&)*?(${rules['rule']}\\=[^&]*&?).*`, "i");
         let whitelist = rules['whitelist'];
         let pos = rules['pos'];
-        return { whitelist, rules: [{ rule, pos }] };
+        return { basic, whitelist, rules: [{ rule, pos }] };
     }
 }
 function parse_match_rules(o) {
