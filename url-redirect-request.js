@@ -106,6 +106,7 @@ class MatchRule {
                     return need_decode ? decodeURIComponent(s) : s;
                 } else return null;
             case REMOVE_QUERY_RULE:
+                if (s.match(this.rule["basic"]) == null) return null;
                 let u = new MyURL(s);
                 let whitelist = this.rule["whitelist"] || false;
                 let oquery = u.query;
@@ -135,6 +136,7 @@ function parse_type(s) {
     return -1;
 }
 function parse_remove_query_rule(o) {
+    let basic = new RegExp(o['basic'], "i");
     let whitelist = o['whitelist'];
     let rules = o['rules'];
     if (typeof rules == "string") {
