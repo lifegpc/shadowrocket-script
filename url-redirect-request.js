@@ -113,11 +113,12 @@ class MatchRule {
                 let query = "";
                 for (let r of this.rule["rules"]) {
                     let m = u.query.match(r['rule']);
-                    if (m != null) {
-                        let pos = this.rule['pos'] || 1;
+                    let pos = this.rule['pos'] || 1;
+                    while (m != null) {
                         let s = m[pos];
                         u.query = u.query.replace(s, '');
                         if (whitelist) query += s;
+                        m = u.query.match(r['rule']);
                     }
                 }
                 if (whitelist) u.query = query;
