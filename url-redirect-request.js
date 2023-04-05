@@ -87,6 +87,74 @@ class MyURL {
         return s;
     }
 }
+const REDIRECT_RULE = 0;
+class MatchRule {
+    constructor(rule, type = REDIRECT_RULE) {
+        this.rule = rule;
+        this.type = type;
+    }
+    /**@param {string} s*/
+    match(s) {
+        switch (this.type) {
+            case REDIRECT_RULE:
+                let m = s.match(this.rule['rule']);
+                if (m != null) {
+                    let pos = this.rule['pos'] || 1;
+                    let s = m[pos];
+                    let need_decode = this.rule["need_decode"] || true;
+                    return need_decode ? decodeURIComponent(s) : s;
+                } else return null;
+            default:
+                return null;
+        }
+    }
+}
+function parse_type(s) {
+    if (s === undefined || s === null) return REDIRECT_RULE;
+    if (typeof s == "number") return s;
+    let o = s.toLowerCase();
+    if (o == "redirect") return REDIRECT_RULE;
+    return -1;
+}
+function parse_match_rules(o) {
+    if (Array.isArray(o)) {
+        /**@type {MatchRule[]} */
+        let r = [];
+        for (let i of o) {
+            if (typeof i == "string") {
+                let rule = new RegExp(i, "i");
+                r.push(new MatchRule({ rule }));
+            } else {
+                let type = parse_type(i['type']);
+                switch (type) {
+                    case REDIRECT_RULE:
+                        let rule = new RegExp(i['rule'], "i");
+                        let pos = i["pos"];
+                        let need_decode = i['need_decode'];
+                        r.push(new MatchRule({ rule, pos, need_decode }));
+                        break;
+                    default:
+                        throw Error("Unknown type.");
+                }
+            }
+        }
+        return r;
+    } else if (typeof o == "string") {
+        let rule = new RegExp(o, "i");
+        return [new MatchRule({ rule })]
+    } else {
+        let type = parse_type(o['type']);
+        switch (type) {
+            case REDIRECT_RULE:
+                let rule = new RegExp(o['rule'], "i");
+                let pos = o["pos"];
+                let need_decode = o['need_decode'];
+                return [new MatchRule({ rule, pos, need_decode })]
+            default:
+                throw Error("Unknown type.");
+        }
+    }
+}
 let headers = $request.headers;
 /**@type {string} */
 let url = $request.url;
@@ -193,30 +261,23 @@ async function get_argument() {
 async function main() {
     let argument = await get_argument();
     console.log(argument);
-    /**@type {Array<RegExp>} */
-    let regexs = [];
-    if (Array.isArray(argument['regex'])) {
-        for (let r of argument['regex']) {
-            regexs.push(new RegExp(r, 'i'));
-        }
-    } else {
-        regexs.push(new RegExp(argument['regex'], 'i'));
-    }
+    let rules = parse_match_rules(argument["regex"] || argument['rules']);
     let endpoint = argument['endpoint'];
     let status = argument['status'] || 302;
     let body = argument['body'] || "Redirected.";
     let theaders = argument['headers'] || {};
     let netloc = endpoint != undefined ? new MyURL(endpoint).netloc : null;
+    /**@type {string | null}*/
     let matched = null;
-    for (let r of regexs) {
-        matched = url.match(r);
+    for (let r of rules) {
+        matched = r.match(url);
         if (matched != null) {
             break;
         }
     }
     if (matched != null) {
         console.log("Matched.");
-        let nurl = decodeURIComponent(matched[1]);
+        let nurl = matched;
         let u = new MyURL(nurl, url);
         url = u.toString();
         if (netloc != null) {
