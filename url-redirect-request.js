@@ -86,6 +86,11 @@ class MyURL {
         }
         return s;
     }
+    trimQuery() {
+        while (this.query.endsWith("&")) {
+            this.query = this.query.slice(0, this.query - 1);
+        }
+    }
 }
 const REDIRECT_RULE = 0;
 const REMOVE_QUERY_RULE = 1;
@@ -108,6 +113,7 @@ class MatchRule {
             case REMOVE_QUERY_RULE:
                 if (s.match(this.rule["basic"]) == null) return null;
                 let u = new MyURL(s);
+                u.trimQuery();
                 let whitelist = this.rule["whitelist"] || false;
                 let oquery = u.query;
                 let query = "";
@@ -122,6 +128,7 @@ class MatchRule {
                     }
                 }
                 if (whitelist) u.query = query;
+                u.trimQuery();
                 return u.query == oquery ? null : u.toString();
             default:
                 return null;
