@@ -88,7 +88,7 @@ class MyURL {
     }
     trimQuery() {
         while (this.query.endsWith("&")) {
-            this.query = this.query.slice(0, this.query - 1);
+            this.query = this.query.slice(0, this.query.length - 1);
         }
     }
 }
