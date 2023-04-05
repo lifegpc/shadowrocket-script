@@ -141,23 +141,23 @@ function parse_remove_query_rule(o) {
     let whitelist = o['whitelist'];
     let rules = o['rules'];
     if (typeof rules == "string") {
-        let rule = new RegExp(`(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
+        let rule = new RegExp(`^(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
         return { basic, whitelist, rules: [{ rule }] }
     } else if (Array.isArray(rules)) {
         let rrules = [];
         for (let r of rules) {
             if (typeof r == "string") {
-                let rule = new RegExp(`(?:[^&]*&)*?(${r}\\=[^&]*&?).*`, "i");
+                let rule = new RegExp(`^(?:[^&]*&)*?(${r}\\=[^&]*&?).*`, "i");
                 rrules.push({ rule });
             } else {
-                let rule = new RegExp(`(?:[^&]*&)*?(${r['rule']}\\=[^&]*&?).*`, "i");
+                let rule = new RegExp(`^(?:[^&]*&)*?(${r['rule']}\\=[^&]*&?).*`, "i");
                 let pos = r['pos'];
                 rrules.push({ rule, pos });
             }
         }
         return { basic, whitelist, rules: rrules }
     } else {
-        let rule = new RegExp(`(?:[^&]*&)*?(${rules['rule']}\\=[^&]*&?).*`, "i");
+        let rule = new RegExp(`^(?:[^&]*&)*?(${rules['rule']}\\=[^&]*&?).*`, "i");
         let pos = rules['pos'];
         return { basic, whitelist, rules: [{ rule, pos }] };
     }
