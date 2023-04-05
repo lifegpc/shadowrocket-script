@@ -316,7 +316,7 @@ async function main() {
     let endpoint = argument['endpoint'];
     let status = argument['status'] || 302;
     let body = argument['body'] || "Redirected.";
-    let theaders = argument['headers'] || {};
+    let theaders = Object.assign({"Connection": "Close"}, argument['headers']);
     let netloc = endpoint != undefined ? new MyURL(endpoint).netloc : null;
     /**@type {string | null}*/
     let matched = null;
