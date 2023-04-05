@@ -88,7 +88,7 @@ class MyURL {
     }
 }
 const REDIRECT_RULE = 0;
-const REMOVE_PARAM_RULE = 1;
+const REMOVE_QUERY_RULE = 1;
 class MatchRule {
     constructor(rule, type = REDIRECT_RULE) {
         this.rule = rule;
@@ -105,22 +105,22 @@ class MatchRule {
                     let need_decode = this.rule["need_decode"] || true;
                     return need_decode ? decodeURIComponent(s) : s;
                 } else return null;
-            case REMOVE_PARAM_RULE:
+            case REMOVE_QUERY_RULE:
                 let u = new MyURL(s);
                 let whitelist = this.rule["whitelist"] || false;
-                let oparams = u.params;
-                let params = "";
+                let oquery = u.query;
+                let query = "";
                 for (let r of this.rule["rules"]) {
-                    let m = u.params.match(r['rule']);
+                    let m = u.query.match(r['rule']);
                     if (m != null) {
                         let pos = this.rule['pos'] || 1;
                         let s = m[pos];
-                        u.params = u.params.replace(s, '');
-                        if (whitelist) params += s;
+                        u.query = u.query.replace(s, '');
+                        if (whitelist) query += s;
                     }
                 }
-                if (whitelist) u.params = params;
-                return u.params == oparams ? null : u.toString();
+                if (whitelist) u.query = query;
+                return u.query == oquery ? null : u.toString();
             default:
                 return null;
         }
@@ -131,10 +131,10 @@ function parse_type(s) {
     if (typeof s == "number") return s;
     let o = s.toLowerCase();
     if (o == "redirect") return REDIRECT_RULE;
-    if (o == "remove_param") return REMOVE_PARAM_RULE;
+    if (o == "remove_query") return REMOVE_QUERY_RULE;
     return -1;
 }
-function parse_remove_param_rule(o) {
+function parse_remove_query_rule(o) {
     let whitelist = o['whitelist'];
     let rules = o['rules'];
     if (typeof rules == "string") {
@@ -177,8 +177,8 @@ function parse_match_rules(o) {
                         let need_decode = i['need_decode'];
                         r.push(new MatchRule({ rule, pos, need_decode }));
                         break;
-                    case REMOVE_PARAM_RULE:
-                        r.push(new MatchRule(parse_remove_param_rule(i), REMOVE_PARAM_RULE));
+                    case REMOVE_QUERY_RULE:
+                        r.push(new MatchRule(parse_remove_query_rule(i), REMOVE_QUERY_RULE));
                         break;
                     default:
                         throw Error("Unknown type.");
@@ -197,8 +197,8 @@ function parse_match_rules(o) {
                 let pos = o["pos"];
                 let need_decode = o['need_decode'];
                 return [new MatchRule({ rule, pos, need_decode })]
-            case REMOVE_PARAM_RULE:
-                return [new MatchRule(parse_remove_param_rule(o), REMOVE_PARAM_RULE)]
+            case REMOVE_QUERY_RULE:
+                return [new MatchRule(parse_remove_query_rule(o), REMOVE_QUERY_RULE)]
             default:
                 throw Error("Unknown type.");
         }
