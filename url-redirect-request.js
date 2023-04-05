@@ -88,6 +88,7 @@ class MyURL {
     }
 }
 const REDIRECT_RULE = 0;
+const REMOVE_PARAM_RULE = 1;
 class MatchRule {
     constructor(rule, type = REDIRECT_RULE) {
         this.rule = rule;
@@ -104,6 +105,22 @@ class MatchRule {
                     let need_decode = this.rule["need_decode"] || true;
                     return need_decode ? decodeURIComponent(s) : s;
                 } else return null;
+            case REMOVE_PARAM_RULE:
+                let u = new MyURL(s);
+                let whitelist = this.rule["whitelist"] || false;
+                let oparams = u.params;
+                let params = "";
+                for (let r of this.rule["rules"]) {
+                    let m = u.params.match(r['rule']);
+                    if (m != null) {
+                        let pos = this.rule['pos'] || 1;
+                        let s = m[pos];
+                        u.params = u.params.replace(s, '');
+                        if (whitelist) params += s;
+                    }
+                }
+                if (whitelist) u.params = params;
+                return u.params == oparams ? null : u.toString();
             default:
                 return null;
         }
@@ -114,7 +131,34 @@ function parse_type(s) {
     if (typeof s == "number") return s;
     let o = s.toLowerCase();
     if (o == "redirect") return REDIRECT_RULE;
+    if (o == "remove_param") return REMOVE_PARAM_RULE;
     return -1;
+}
+function parse_remove_param_rule(o) {
+    let whitelist = o['whitelist'];
+    let rules = o['rules'];
+    if (typeof rules == "string") {
+        let rule = new RegExp(`(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
+        return { whitelist, rules: [{ rule }] }
+    } else if (Array.isArray(rules)) {
+        let rules = [];
+        for (let r of rules) {
+            if (typeof r == "string") {
+                let rule = new RegExp(`(?:[^&]*&)*?(${r}\\=[^&]*&?).*`, "i");
+                rules.push({ rule });
+            } else {
+                let rule = new RegExp(`(?:[^&]*&)*?(${r['rule']}\\=[^&]*&?).*`, "i");
+                let pos = r['pos'];
+                rules.push({ rule, pos });
+            }
+        }
+        return { rules }
+    } else {
+        let rule = new RegExp(`(?:[^&]*&)*?(${rules['rule']}\\=[^&]*&?).*`, "i");
+        let whitelist = rules['whitelist'];
+        let pos = rules['pos'];
+        return { whitelist, rules: [{ rule, pos }] };
+    }
 }
 function parse_match_rules(o) {
     if (Array.isArray(o)) {
@@ -133,6 +177,9 @@ function parse_match_rules(o) {
                         let need_decode = i['need_decode'];
                         r.push(new MatchRule({ rule, pos, need_decode }));
                         break;
+                    case REMOVE_PARAM_RULE:
+                        r.push(new MatchRule(parse_remove_param_rule(i), REMOVE_PARAM_RULE));
+                        break;
                     default:
                         throw Error("Unknown type.");
                 }
@@ -150,6 +197,8 @@ function parse_match_rules(o) {
                 let pos = o["pos"];
                 let need_decode = o['need_decode'];
                 return [new MatchRule({ rule, pos, need_decode })]
+            case REMOVE_PARAM_RULE:
+                return [new MatchRule(parse_remove_param_rule(o), REMOVE_PARAM_RULE)]
             default:
                 throw Error("Unknown type.");
         }
