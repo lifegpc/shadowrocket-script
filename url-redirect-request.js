@@ -1,97 +1,5 @@
 // url-redirect-request.js
-class MyURL {
-    /**
-     * @param {string} url
-     * @param {string | MyURL | undefined} base
-     */
-    constructor(url, base = undefined) {
-        /**@type {string}*/
-        this.scheme = '';
-        /**@type {string}*/
-        this.netloc = '';
-        /**@type {string}*/
-        this.params = '';
-        /**@type {string}*/
-        this.query = '';
-        /**@type {string}*/
-        this.path = '';
-        /**@type {string}*/
-        let u = url.replaceAll(/[\t\r\n]/g, '');
-        let i = u.indexOf(':');
-        if (i > 0) {
-            this.scheme = u.substring(0, i);
-            u = u.substring(i + 1);
-        }
-        if (u.indexOf("//") == 0) {
-            let delim = u.length;
-            for (let s of ['/', '?', '#']) {
-                let wdelim = u.indexOf(s, 2);
-                if (wdelim != -1) {
-                    delim = Math.min(wdelim, delim);
-                }
-            }
-            this.netloc = u.substring(2, delim);
-            u = u.substring(delim);
-        }
-        if (!this.netloc.length) {
-            if (base === undefined) throw Error("netloc not found.");
-            if (!(base instanceof MyURL)) {
-                base = new MyURL(base);
-            }
-            this.scheme = base.scheme;
-            this.netloc = base.netloc;
-        }
-        i = u.indexOf('?');
-        if (i != -1) {
-            this.query = u.substring(i + 1);
-            u = u.substring(0, i);
-        }
-        i = u.indexOf(';');
-        if (i != -1) {
-            let j = u.lastIndexOf('/');
-            if (j == -1) {
-                this.params = u.substring(i + 1);
-                u = u.substring(0, i);
-            } else {
-                i = u.indexOf(';', j);
-                if (i != -1) {
-                    this.params = u.substring(i + 1);
-                    u = u.substring(0, i);
-                }
-            }
-        }
-        this.path = u;
-        if (!u.startsWith("/")) {
-            if (base === undefined) {
-                this.path = '/' + this.path;
-            } else {
-                if (!(base instanceof MyURL)) {
-                    base = new MyURL(base);
-                }
-                let i = base.path.lastIndexOf('/');
-                this.path = base.path.substring(0, i) + '/' + this.path;
-            }
-        }
-    }
-    toString() {
-        let s = `${this.netloc}${this.path}`;
-        if (this.scheme.length) {
-            s = `${this.scheme}://${s}`;
-        }
-        if (this.query.length) {
-            s = `${s}?${this.query}`;
-        }
-        if (this.params.length) {
-            s = `${s};${this.params}`;
-        }
-        return s;
-    }
-    trimQuery() {
-        while (this.query.endsWith("&")) {
-            this.query = this.query.slice(0, this.query.length - 1);
-        }
-    }
-}
+const { MyURL } = require('./mod/myurl')
 /**
  * @param {string} s
  * @param {Array<RegExp>} rules
@@ -129,7 +37,7 @@ class MatchRule {
                 let query = "";
                 for (let r of this.rule["rules"]) {
                     let m = u.query.match(r['rule']);
-                    let pos = this.rule['pos'] || 1;
+                    let pos = r['pos'] || 1;
                     while (m != null) {
                         let s = m[pos];
                         u.query = u.query.replace(s, '');
@@ -160,7 +68,7 @@ function parse_remove_query_rule(o) {
     let rules = o['rules'];
     if (typeof rules == "string") {
         let rule = new RegExp(`^(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
-        return { "basic": basic, "whitelist": whitelist, "rules": [{ rule }] }
+        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule }] }
     } else if (Array.isArray(rules)) {
         let rrules = [];
         for (let r of rules) {
@@ -229,6 +137,7 @@ let $httpClient = globalThis['$httpClient'];
 let $persistentStore = globalThis['$persistentStore'];
 /**@type {string} */
 let $argument = globalThis['$argument'];
+let $done = globalThis['$done'];
 /**@type {Object.<string, string>} */
 let headers = $request['headers'];
 /**@type {string} */
