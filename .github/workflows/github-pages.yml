@@ -22,6 +22,9 @@ jobs:
       - name: Download compiler
         run: |
           python3 download_compiler.py
+      - name: Install Module
+        run: |
+          yarn install
       - name: Compile
         run: |
           ./compile.sh -m -s -d
