@@ -92,6 +92,16 @@ class MyURL {
         }
     }
 }
+/**
+ * @param {string} s
+ * @param {Array<RegExp>} rules
+ */
+function match_rules(s, rules) {
+    for (let r of rules) {
+        if (s.match(r) !== null) return true;
+    }
+    return false;
+}
 const REDIRECT_RULE = 0;
 const REMOVE_QUERY_RULE = 1;
 class MatchRule {
@@ -111,7 +121,7 @@ class MatchRule {
                     return need_decode ? decodeURIComponent(s) : s;
                 } else return null;
             case REMOVE_QUERY_RULE:
-                if (s.match(this.rule["basic"]) == null) return null;
+                if (!match_rules(s, this.rule["basic"])) return null;
                 let u = new MyURL(s);
                 u.trimQuery();
                 let whitelist = this.rule["whitelist"] || false;
@@ -135,6 +145,7 @@ class MatchRule {
         }
     }
 }
+/**@param {number | string} s */
 function parse_type(s) {
     if (s === undefined || s === null) return REDIRECT_RULE;
     if (typeof s == "number") return s;
@@ -144,29 +155,29 @@ function parse_type(s) {
     return -1;
 }
 function parse_remove_query_rule(o) {
-    let basic = new RegExp(o['basic'], "i");
+    let basic = Array.isArray(o['basic']) ? o['basic'].map(v => new RegExp(v, "i")) : [new RegExp(o['basic'], "i")];
     let whitelist = o['whitelist'];
     let rules = o['rules'];
     if (typeof rules == "string") {
         let rule = new RegExp(`^(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
-        return { basic, whitelist, rules: [{ rule }] }
+        return { "basic": basic, "whitelist": whitelist, "rules": [{ rule }] }
     } else if (Array.isArray(rules)) {
         let rrules = [];
         for (let r of rules) {
             if (typeof r == "string") {
                 let rule = new RegExp(`^(?:[^&]*&)*?(${r}\\=[^&]*&?).*`, "i");
-                rrules.push({ rule });
+                rrules.push({ "rule": rule });
             } else {
                 let rule = new RegExp(`^(?:[^&]*&)*?(${r['rule']}\\=[^&]*&?).*`, "i");
                 let pos = r['pos'];
-                rrules.push({ rule, pos });
+                rrules.push({ "rule": rule, "pos": pos });
             }
         }
-        return { basic, whitelist, rules: rrules }
+        return { "basic": basic, "whitelist": whitelist, "rules": rrules }
     } else {
         let rule = new RegExp(`^(?:[^&]*&)*?(${rules['rule']}\\=[^&]*&?).*`, "i");
         let pos = rules['pos'];
-        return { basic, whitelist, rules: [{ rule, pos }] };
+        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule, "pos": pos }] };
     }
 }
 function parse_match_rules(o) {
@@ -176,7 +187,7 @@ function parse_match_rules(o) {
         for (let i of o) {
             if (typeof i == "string") {
                 let rule = new RegExp(i, "i");
-                r.push(new MatchRule({ rule }));
+                r.push(new MatchRule({ "rule": rule }));
             } else {
                 let type = parse_type(i['type']);
                 switch (type) {
@@ -184,7 +195,7 @@ function parse_match_rules(o) {
                         let rule = new RegExp(i['rule'], "i");
                         let pos = i["pos"];
                         let need_decode = i['need_decode'];
-                        r.push(new MatchRule({ rule, pos, need_decode }));
+                        r.push(new MatchRule({ "rule": rule, "pos": pos, "need_decode": need_decode }));
                         break;
                     case REMOVE_QUERY_RULE:
                         r.push(new MatchRule(parse_remove_query_rule(i), REMOVE_QUERY_RULE));
@@ -197,7 +208,7 @@ function parse_match_rules(o) {
         return r;
     } else if (typeof o == "string") {
         let rule = new RegExp(o, "i");
-        return [new MatchRule({ rule })]
+        return [new MatchRule({ "rule": rule })]
     } else {
         let type = parse_type(o['type']);
         switch (type) {
@@ -205,7 +216,7 @@ function parse_match_rules(o) {
                 let rule = new RegExp(o['rule'], "i");
                 let pos = o["pos"];
                 let need_decode = o['need_decode'];
-                return [new MatchRule({ rule, pos, need_decode })]
+                return [new MatchRule({ "rule": rule, "pos": pos, "need_decode": need_decode })]
             case REMOVE_QUERY_RULE:
                 return [new MatchRule(parse_remove_query_rule(o), REMOVE_QUERY_RULE)]
             default:
@@ -213,47 +224,52 @@ function parse_match_rules(o) {
         }
     }
 }
-let headers = $request.headers;
+let $request = globalThis['$request'];
+let $httpClient = globalThis['$httpClient'];
+let $persistentStore = globalThis['$persistentStore'];
 /**@type {string} */
-let url = $request.url;
+let $argument = globalThis['$argument'];
+/**@type {Object.<string, string>} */
+let headers = $request['headers'];
+/**@type {string} */
+let url = $request['url'];
 console.log(headers);
 console.log(url);
 /**@returns {Promise<{status: number, headers: Object.<string, string>, data: string | Uint8Array}>} */
 function fetch_data(url) {
     return new Promise((resolve, reject) => {
-        $httpClient.get(url, (error, res, data) => {
+        $httpClient['get'](url, (error, res, data) => {
             if (error != null) {
                 reject(error);
                 return;
             }
-            resolve({ status: res.status, headers: res.headers, data })
+            resolve({ "status": res["status"], "headers": res["headers"], "data": data })
         })
     })
 }
 async function get_remote_argument(url, key, cached) {
-    let data = $persistentStore.read(key);
+    let data = $persistentStore['read'](key);
     let now = new Date().getTime();
     if (data == null) {
         let d = await fetch_data(url);
         console.log(d);
-        data = { data: JSON.parse(d.data), cached_time: now };
-        $persistentStore.write(JSON.stringify(data), key);
+        data = { "data": JSON.parse(d.data), "cached_time": now };
+        $persistentStore['write'](JSON.stringify(data), key);
     } else {
         data = JSON.parse(data);
         let cached_time = data['cached_time'];
         if (cached_time + cached < now) {
             let d = await fetch_data(url);
             console.log(d);
-            data = { data: JSON.parse(d.data), cached_time: now };
-            $persistentStore.write(JSON.stringify(data), key);
+            data = { "data": JSON.parse(d.data), "cached_time": now };
+            $persistentStore['write'](JSON.stringify(data), key);
         }
     }
-    return data.data;
+    return data['data'];
 }
 function get_args() {
     let a = [];
     let d = {};
-    /**@type {Array<string>}*/
     let s = $argument.split('|');
     for (let i of s) {
         let l = i.split('=');
@@ -323,7 +339,7 @@ async function main() {
     let endpoint = argument['endpoint'];
     let status = argument['status'] || 302;
     let body = argument['body'] || "Redirected.";
-    let theaders = Object.assign({"Connection": "Close"}, argument['headers']);
+    let theaders = Object.assign({ "Connection": "Close" }, argument['headers']);
     let netloc = endpoint != undefined ? new MyURL(endpoint).netloc : null;
     /**@type {string | null}*/
     let matched = null;
@@ -342,11 +358,11 @@ async function main() {
             theaders['Host'] = netloc
             theaders['X-LOCATION'] = url;
             console.log("New Headers:", theaders);
-            $done({ url: endpoint, headers: theaders });
+            $done({ "url": endpoint, "headers": theaders });
         } else {
             theaders['location'] = url;
             console.log("New Headers:", theaders);
-            $done({ response: { status, body, headers: theaders } })
+            $done({ "response": { "status": status, "body": body, "headers": theaders } })
         }
     } else {
         $done($request);
