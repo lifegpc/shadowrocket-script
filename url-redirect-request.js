@@ -67,7 +67,7 @@ function parse_remove_query_rule(o) {
     let basic = Array.isArray(o['basic']) ? o['basic'].map(v => new RegExp(v, "i")) : [new RegExp(o['basic'], "i")];
     let whitelist = o['whitelist'];
     let rules = o['rules'];
-    let exclude = Array.isArray(o['exclude']) ? o['exclude'].map(v => new RegExp(v, "i")) : o['exclude'] ? [new RegExp(o['exclude'])] : [];
+    let exclude = Array.isArray(o['exclude']) ? o['exclude'].map(v => new RegExp(v, "i")) : o['exclude'] ? [new RegExp(o['exclude'], "i")] : [];
     if (typeof rules == "string") {
         let rule = new RegExp(`^(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
         return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule }], "exclude": exclude }
