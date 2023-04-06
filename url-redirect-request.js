@@ -30,6 +30,7 @@ class MatchRule {
                 } else return null;
             case REMOVE_QUERY_RULE:
                 if (!match_rules(s, this.rule["basic"])) return null;
+                if (match_rules(s, this.rule["exclude"])) return null;
                 let u = new MyURL(s);
                 u.trimQuery();
                 let whitelist = this.rule["whitelist"] || false;
@@ -66,9 +67,10 @@ function parse_remove_query_rule(o) {
     let basic = Array.isArray(o['basic']) ? o['basic'].map(v => new RegExp(v, "i")) : [new RegExp(o['basic'], "i")];
     let whitelist = o['whitelist'];
     let rules = o['rules'];
+    let exclude = Array.isArray(o['exclude']) ? o['exclude'].map(v => new RegExp(v, "i")) : o['exclude'] ? [new RegExp(o['exclude'])] : [];
     if (typeof rules == "string") {
         let rule = new RegExp(`^(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
-        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule }] }
+        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule }], "exclude": exclude }
     } else if (Array.isArray(rules)) {
         let rrules = [];
         for (let r of rules) {
@@ -81,11 +83,11 @@ function parse_remove_query_rule(o) {
                 rrules.push({ "rule": rule, "pos": pos });
             }
         }
-        return { "basic": basic, "whitelist": whitelist, "rules": rrules }
+        return { "basic": basic, "whitelist": whitelist, "rules": rrules, "exclude": exclude }
     } else {
         let rule = new RegExp(`^(?:[^&]*&)*?(${rules['rule']}\\=[^&]*&?).*`, "i");
         let pos = rules['pos'];
-        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule, "pos": pos }] };
+        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule, "pos": pos }], "exclude": exclude };
     }
 }
 function parse_match_rules(o) {
