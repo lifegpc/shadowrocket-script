@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Download compiler
         run: |
-          python3 download_Compiler.jar
+          python3 download_compiler.py
       - name: Compile
         run: |
           ./compile.sh -m -s -d
