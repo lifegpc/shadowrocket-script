@@ -1,5 +1,7 @@
 // url-redirect-request.js
 const { MyURL } = require('./mod/myurl')
+const { $argument, $httpClient, $persistentStore } = require('./mod/base_common')
+const { $request, $done } = require('./mod/base_request')
 /**
  * @param {string} s
  * @param {Array<RegExp>} rules
@@ -134,15 +136,7 @@ function parse_match_rules(o) {
         }
     }
 }
-let $request = globalThis['$request'];
-let $httpClient = globalThis['$httpClient'];
-let $persistentStore = globalThis['$persistentStore'];
-/**@type {string} */
-let $argument = globalThis['$argument'];
-let $done = globalThis['$done'];
-/**@type {Object.<string, string>} */
 let headers = $request['headers'];
-/**@type {string} */
 let url = $request['url'];
 console.log(headers);
 console.log(url);
