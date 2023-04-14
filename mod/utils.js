@@ -10,7 +10,7 @@ function headers_get(headers, key, default_value = undefined) {
         let k = keys[i];
         let l = k.toLowerCase();
         if (l == lkey) {
-            return headers[l];
+            return headers[k];
         }
     }
     return default_value;
