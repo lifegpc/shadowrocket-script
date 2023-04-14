@@ -56,6 +56,7 @@ function filterHTML(html) {
 function main() {
     let headers = $response['headers'];
     let content_type = headers_get(headers, "content-type");
+    console.log("Content-Type", content_type);
     if (content_type === undefined) content_type = "text/html";
     content_type = content_type.trim();
     if (content_type.startsWith("text/html")) {
@@ -74,7 +75,9 @@ function main() {
 }
 
 try {
-    $done(main())
+    let r = main();
+    console.log(r);
+    $done(r)
 } catch (e) {
     console.log(e);
     $done({})
