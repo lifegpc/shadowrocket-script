@@ -67,6 +67,7 @@ function main() {
         if (is_binary) {
             body = (new TextDecoder(charset)).decode(body);
         }
+        console.log(body);
         let r = filterHTML(body);
         return { 'body': is_binary ? (new TextEncoder(charset)).encode(r) : r };
     } else {
