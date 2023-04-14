@@ -53,4 +53,5 @@ if [ $FORCE_BUILD -eq 1 ]; then
     PYT="$PYT -f"
 fi
 $PYT -t change-ua.js
+$PYT -t genshin_remove_detect_ua_script.js
 $PYT -t url-redirect-request.js

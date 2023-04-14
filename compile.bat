@@ -24,5 +24,6 @@ IF %SOURCE_MAP_INCLUDE_CONTENT% == 1 SET "pyt=%pyt% -s"
 IF %ADD_SOURCE_MAP_URL% == 1 SET "pyt=%pyt% -a"
 IF %FORCE_BUILD% == 1 SET "pyt=%pyt% -f"
 %pyt% -t change-ua.js
+%pyt% -t genshin_remove_detect_ua_script.js
 %pyt% -t url-redirect-request.js
 ENDLOCAL
