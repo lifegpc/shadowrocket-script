@@ -56,9 +56,7 @@ function filterHTML(html) {
 function main() {
     let headers = $response['headers'];
     let content_type = headers_get(headers, "content-type");
-    if (content_type === undefined) {
-        return {};
-    }
+    if (content_type === undefined) content_type = "text/html";
     content_type = content_type.trim();
     if (content_type.startsWith("text/html")) {
         let body = $response['body'];
