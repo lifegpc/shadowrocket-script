@@ -52,4 +52,5 @@ fi
 if [ $FORCE_BUILD -eq 1 ]; then
     PYT="$PYT -f"
 fi
+$PYT -t change-ua.js
 $PYT -t url-redirect-request.js
