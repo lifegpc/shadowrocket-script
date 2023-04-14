@@ -1,3 +1,5 @@
+const { get_charset } = require("./utils");
+
 class Input {
     /**
      * @param {Uint8Array || string} data
@@ -18,11 +20,7 @@ class Input {
     get charset() {
         if (!this.is_text || typeof this.data == "string") return null;
         if (this.type !== undefined) {
-            let s = this.type.split(';');
-            for (let i of s) {
-                let j = i.trim().split('=')
-                if (j.length > 1 && j[0] == 'charset') return j[1];
-            }
+            get_charset(this.type);
         }
         return "utf-8"
     }
