@@ -37,6 +37,7 @@ function filterHTML(html) {
             }
         },
         end: (tag) => {
+            let append_end_tag = true;
             if (tag == "script") {
                 if (tmp.length) {
                     let t = tmp.pop();
@@ -45,10 +46,12 @@ function filterHTML(html) {
                     if (t2.indexOf("navigator.userAgent.match") == -1) {
                         append(t[0], t[1], t[2]);
                         re += t2;
+                    } else {
+                        append_end_tag = false;
                     }
                 }
             }
-            re += `</${tag}>`;
+            if (append_end_tag) re += `</${tag}>`;
         },
         decl: (name, value) => {
             if (name == "doctype") {
