@@ -83,7 +83,8 @@
 // Regular Expressions for parsing tags and attributes
 var startTag = /^<([-A-Za-z0-9_]+)((?:\s+[a-zA-Z_:][-a-zA-Z0-9_:.]*(?:\s*=\s*(?:(?:"[^"]*")|(?:'[^']*')|[^>\s]+))?)*)\s*(\/?)>/,
     endTag = /^<\/([-A-Za-z0-9_]+)[^>]*>/,
-    attr = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:(?:"((?:\\.|[^"])*)")|(?:'((?:\\.|[^'])*)')|([^>\s]+)))?/g;
+    attr = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:(?:"((?:\\.|[^"])*)")|(?:'((?:\\.|[^'])*)')|([^>\s]+)))?/g,
+    decl = /^<!([-A-Za-z0-9_]+)([^>]+)>/;
 
 // Empty Elements - HTML 5
 var empty = makeMap("area,base,basefont,br,col,frame,hr,img,input,link,meta,param,embed,command,keygen,source,track,wbr");
@@ -106,7 +107,7 @@ var special = makeMap("script,style");
 
 /**@
  * @param {string} html
- * @param {{start: (tag: string, attrs: {name: string, value: string, escaped: string}[], unary: boolean) => void, end: (tag: string) => void, chars: (text: string) => void, comment: (text: string) => void}} handler
+ * @param {{start: (tag: string, attrs: {name: string, value: string, escaped: string}[], unary: boolean) => void, end: (tag: string) => void, chars: (text: string) => void, comment: (text: string) => void, decl: (name: string, value: string) => void}} handler
  */
 var HTMLParser = function (html, handler) {
     var index, chars, match, stack = [], last = html;
@@ -131,6 +132,14 @@ var HTMLParser = function (html, handler) {
                     chars = false;
                 }
 
+                // declaration
+            } else if (html.indexOf("<!") == 0) {
+                match = html.match(decl);
+                if (match) {
+                    html = html.substring(match[0].length);
+                    if (handler.decl) handler.decl(match[1], match[2].trim());
+                    chars = false;
+                }
                 // end tag
             } else if (html.indexOf("</") == 0) {
                 match = html.match(endTag);

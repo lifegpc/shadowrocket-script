@@ -10,23 +10,24 @@ function filterHTML(html) {
     /**
      * @param {string} tag
      * @param {{name: string, value: string, escaped: string}[]} attrs
+     * @param {boolean} unary
      */
-    function append(tag, attrs) {
+    function append(tag, attrs, unary) {
         re += `<${tag}`;
         attrs.forEach(attr => {
             re += ` ${attr.name}="${attr.escaped}"`;
         })
+        if (unary) re += "/";
         re += ">";
     }
     html = html.trim();
-    html = html.replace(/<!doctype [a-z0-9]+>/i, '');
     HTMLParser(html, {
         start: (tag, attrs, unary) => {
             if (tag == "script") {
-                tmp.push([tag, attrs]);
+                tmp.push([tag, attrs, unary]);
                 tmp2.push('');
             }
-            else append(tag, attrs);
+            else append(tag, attrs, unary);
         },
         chars: (text) => {
             if (tmp.length) {
@@ -42,12 +43,17 @@ function filterHTML(html) {
                     /**@type {string} */
                     let t2 = tmp2.pop();
                     if (t2.indexOf("navigator.userAgent.match") == -1) {
-                        append(t[0], t[1]);
+                        append(t[0], t[1], t[2]);
                         re += t2;
                     }
                 }
             }
             re += `</${tag}>`;
+        },
+        decl: (name, value) => {
+            if (name == "doctype") {
+                re += `<!${name} ${value}>`
+            }
         }
     })
     return re;
