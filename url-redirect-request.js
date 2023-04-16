@@ -81,7 +81,7 @@ class MatchRule {
                 return false;
         }
     }
-    is_change_headers() {
+    get is_change_headers() {
         switch (this.type) {
             case CHANGE_HEADER_RULE:
                 return true;
