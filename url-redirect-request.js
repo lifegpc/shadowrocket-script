@@ -67,7 +67,8 @@ class MatchRule {
                 if (match_rules(s, this.rule["exclude"])) return false;
                 let rules = this.rule["rules"];
                 let always_set = this.rule["always_set"];
-                if (this.rule["value"] === undefined) {
+                let value = this.rule['value'];
+                if (value === undefined) {
                     return headers_remove_ex(headers, rules);
                 } else {
                     let re = headers_set_ex(headers, rules, value);
