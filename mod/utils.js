@@ -17,6 +17,94 @@ function headers_get(headers, key, default_value = undefined) {
 }
 
 /**
+ * 
+ * @param {Object.<string, string>} headers 
+ * @param {string | string[]} keys 
+ */
+function headers_remove(headers, keys) {
+    if (!Array.isArray(keys)) {
+        keys = [keys];
+    }
+    let lkeys = keys.map(v => v.toLowerCase());
+    let okeys = Object.getOwnPropertyNames(headers);
+    let deleted = false;
+    okeys.forEach((key) => {
+        let lkey = key.toLowerCase();
+        if (lkeys.includes(lkey)) {
+            delete headers[key];
+            deleted = true;
+        }
+    })
+    return deleted;
+}
+
+/**
+ * 
+ * @param {Object.<string, string>} headers 
+ * @param {RegExp | RegExp[]} keys 
+ */
+function headers_remove_ex(headers, keys) {
+    if (!Array.isArray(keys)) {
+        keys = [keys];
+    }
+    let okeys = Object.getOwnPropertyNames(headers);
+    let deleted = false;
+    okeys.forEach(key => {
+        let matched = keys.find(k => key.match(k) !== null);
+        if (matched !== undefined) {
+            delete headers[key];
+            deleted = true;
+        }
+    })
+    return deleted;
+}
+
+/**
+ * 
+ * @param {Object.<string, string>} headers 
+ * @param {string | string[]} keys 
+ * @param {string} value 
+ */
+function headers_set(headers, keys, value) {
+    if (!Array.isArray(keys)) {
+        keys = [keys];
+    }
+    let lkeys = keys.map(v => v.toLowerCase());
+    let okeys = Object.getOwnPropertyNames(headers);
+    let changed = false;
+    okeys.forEach((key) => {
+        let lkey = key.toLowerCase();
+        if (lkeys.includes(lkey)) {
+            headers[key] = value;
+            changed = true;
+        }
+    })
+    return changed;
+}
+
+/**
+ * 
+ * @param {Object.<string, string>} headers 
+ * @param {RegExp | RegExp[]} keys 
+ * @param {string} value 
+ */
+function headers_set_ex(headers, keys, value) {
+    if (!Array.isArray(keys)) {
+        keys = [keys];
+    }
+    let okeys = Object.getOwnPropertyNames(headers);
+    let changed = false;
+    okeys.forEach(key => {
+        let matched = keys.find(k => key.match(k) !== null);
+        if (matched !== undefined) {
+            headers[key] = value;
+            changed = true;
+        }
+    })
+    return changed;
+}
+
+/**
  * @param { string } value
  */
 function get_charset(value) {
@@ -27,4 +115,4 @@ function get_charset(value) {
     }
 }
 
-module.exports = { headers_get, get_charset }
+module.exports = { headers_get, headers_remove, headers_remove_ex, headers_set, headers_set_ex, get_charset }

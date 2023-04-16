@@ -1,7 +1,8 @@
 // url-redirect-request.js
 const { MyURL } = require('./mod/myurl')
-const { $argument, $httpClient, $persistentStore } = require('./mod/base_common')
-const { $request, $done } = require('./mod/base_request')
+const { $request, $done } = require('./mod/base_request');
+const { get_argument } = require('./mod/args');
+const { headers_remove_ex, headers_set_ex } = require('./mod/utils');
 /**
  * @param {string} s
  * @param {Array<RegExp>} rules
@@ -14,6 +15,7 @@ function match_rules(s, rules) {
 }
 const REDIRECT_RULE = 0;
 const REMOVE_QUERY_RULE = 1;
+const CHANGE_HEADER_RULE = 2;
 class MatchRule {
     constructor(rule, type = REDIRECT_RULE) {
         this.rule = rule;
@@ -55,6 +57,46 @@ class MatchRule {
                 return null;
         }
     }
+    /**
+     * @param {string} s
+     * @param {Object.<string, string>} headers*/
+    change_headers(s, headers) {
+        switch (this.type) {
+            case CHANGE_HEADER_RULE:
+                if (!match_rules(s, this.rule["basic"])) return false;
+                if (match_rules(s, this.rule["exclude"])) return false;
+                let rules = this.rule["rules"];
+                let always_set = this.rule["always_set"];
+                if (this.rule["value"] === undefined) {
+                    return headers_remove_ex(headers, rules);
+                } else {
+                    let re = headers_set_ex(headers, rules, value);
+                    if (!re && always_set) {
+                        headers[always_set] = value;
+                        return true;
+                    }
+                    return re;
+                }
+            default:
+                return false;
+        }
+    }
+    is_change_headers() {
+        switch (this.type) {
+            case CHANGE_HEADER_RULE:
+                return true;
+            default:
+                return false;
+        }
+    }
+    get is_always() {
+        switch (this.type) {
+            case CHANGE_HEADER_RULE:
+                return true;
+            default:
+                return false;
+        }
+    }
 }
 /**@param {number | string} s */
 function parse_type(s) {
@@ -63,6 +105,7 @@ function parse_type(s) {
     let o = s.toLowerCase();
     if (o == "redirect") return REDIRECT_RULE;
     if (o == "remove_query") return REMOVE_QUERY_RULE;
+    if (o == "change_header") return CHANGE_HEADER_RULE;
     return -1;
 }
 function parse_remove_query_rule(o) {
@@ -92,6 +135,39 @@ function parse_remove_query_rule(o) {
         return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule, "pos": pos }], "exclude": exclude };
     }
 }
+function parse_change_header_rule(o) {
+    let basic = Array.isArray(o['basic']) ? o['basic'].map(v => new RegExp(v, "i")) : [new RegExp(o['basic'], "i")];
+    let rules = o['rules'];
+    let exclude = Array.isArray(o['exclude']) ? o['exclude'].map(v => new RegExp(v, "i")) : o['exclude'] ? [new RegExp(o['exclude'], "i")] : [];
+    /**@type {string | undefined} */
+    let always_set = o['always_set'];
+    if (always_set !== undefined && typeof always_set !== "string") {
+        throw Error("Failed to parse change header rule.")
+    }
+    /**@type {string | undefined} */
+    let value = o['value'];
+    if (value !== undefined) {
+        if (typeof value !== "string") {
+            throw Error("Failed to parse change header rule.")
+        }
+    }
+    if (typeof rules == "string") {
+        let rule = new RegExp(`^${rules}$`, "i");
+        return { "basic": basic, "rules": [rule], "exclude": exclude, 'value': value, "always_set": always_set }
+    } else if (Array.isArray(rules)) {
+        let rrules = [];
+        for (let r of rules) {
+            if (typeof r == "string") {
+                rrules.push(new RegExp(`^${r}$`, "i"));
+            } else {
+                throw Error("Failed to parse change header rule.")
+            }
+        }
+        return { "basic": basic, "rules": rrules, "exclude": exclude, 'value': value, "always_set": always_set }
+    } else {
+        throw Error("Failed to parse change header rule.")
+    }
+}
 function parse_match_rules(o) {
     if (Array.isArray(o)) {
         /**@type {MatchRule[]} */
@@ -112,6 +188,9 @@ function parse_match_rules(o) {
                     case REMOVE_QUERY_RULE:
                         r.push(new MatchRule(parse_remove_query_rule(i), REMOVE_QUERY_RULE));
                         break;
+                    case CHANGE_HEADER_RULE:
+                        r.push(new MatchRule(parse_change_header_rule(i), CHANGE_HEADER_RULE));
+                        break;
                     default:
                         throw Error("Unknown type.");
                 }
@@ -131,6 +210,8 @@ function parse_match_rules(o) {
                 return [new MatchRule({ "rule": rule, "pos": pos, "need_decode": need_decode })]
             case REMOVE_QUERY_RULE:
                 return [new MatchRule(parse_remove_query_rule(o), REMOVE_QUERY_RULE)]
+            case CHANGE_HEADER_RULE:
+                return [new MatchRule(parse_change_header_rule(o), CHANGE_HEADER_RULE)]
             default:
                 throw Error("Unknown type.");
         }
@@ -140,103 +221,6 @@ let headers = $request['headers'];
 let url = $request['url'];
 console.log(headers);
 console.log(url);
-/**@returns {Promise<{status: number, headers: Object.<string, string>, data: string | Uint8Array}>} */
-function fetch_data(url) {
-    return new Promise((resolve, reject) => {
-        $httpClient['get'](url, (error, res, data) => {
-            if (error != null) {
-                reject(error);
-                return;
-            }
-            resolve({ "status": res["status"], "headers": res["headers"], "data": data })
-        })
-    })
-}
-async function get_remote_argument(url, key, cached) {
-    let data = $persistentStore['read'](key);
-    let now = new Date().getTime();
-    if (data == null) {
-        let d = await fetch_data(url);
-        console.log(d);
-        data = { "data": JSON.parse(d.data), "cached_time": now };
-        $persistentStore['write'](JSON.stringify(data), key);
-    } else {
-        data = JSON.parse(data);
-        let cached_time = data['cached_time'];
-        if (cached_time + cached < now) {
-            let d = await fetch_data(url);
-            console.log(d);
-            data = { "data": JSON.parse(d.data), "cached_time": now };
-            $persistentStore['write'](JSON.stringify(data), key);
-        }
-    }
-    return data['data'];
-}
-function get_args() {
-    let a = [];
-    let d = {};
-    let s = $argument.split('|');
-    for (let i of s) {
-        let l = i.split('=');
-        if (l.length == 1) {
-            a.push(i);
-        } else {
-            let k = l[0];
-            let v = l.slice(1).join('=');
-            if (v.startsWith("int:")) {
-                v = parseInt(v.slice(4));
-            } else if (v.startsWith("bool:")) {
-                v = v.slice(5).toLowerCase();
-                v = v === "true";
-            } else if (v.startsWith("map:")) {
-                let ov = v.slice(4).split(';');
-                v = {};
-                let last_key = null;
-                for (let iv of ov) {
-                    let ivv = iv.split(':');
-                    if (ivv.length > 1) {
-                        last_key = ivv[0];
-                        let kv = ivv.slice(1).join(":");
-                        v[last_key] = kv;
-                    } else if (last_key != null) {
-                        v[last_key] += ";" + iv;
-                    }
-                }
-            }
-            d[k] = v;
-        }
-    }
-    if (a.length) {
-        if (d['url'] == undefined) {
-            for (let i of a) {
-                if (i.startsWith("http://") || i.startsWith("https://")) {
-                    d['url'] = i;
-                    break;
-                }
-            }
-        }
-    }
-    return d;
-}
-async function get_argument() {
-    let data = {};
-    if ($argument.startsWith('{')) {
-        data = JSON.parse($argument);
-    } else {
-        data = get_args();
-        console.log(data);
-    }
-    let url = data['url'];
-    if (typeof url == "string") {
-        let key = data['key'] || url;
-        let cached = data['cached'];
-        if (typeof cached != "number") {
-            cached = 3600000;
-        }
-        return await get_remote_argument(url, key, cached);
-    }
-    return data;
-}
 async function main() {
     let argument = await get_argument();
     console.log(argument);
@@ -249,6 +233,7 @@ async function main() {
     /**@type {string | null}*/
     let matched = null;
     for (let r of rules) {
+        if (r.is_always) continue;
         matched = r.match(url);
         if (matched != null) {
             break;
@@ -270,7 +255,19 @@ async function main() {
             $done({ "response": { "status": status, "body": body, "headers": theaders } })
         }
     } else {
-        $done($request);
+        let result = {};
+        let headers_changed = false;
+        for (let r of rules) {
+            if (!r.is_always) continue;
+            if (r.is_change_headers) {
+                headers_changed = r.change_headers(url, headers);
+            }
+        }
+        if (headers_changed) {
+            console.log("New Headers:", headers);
+            result['headers'] = headers;
+        }
+        $done({});
     }
 }
 
