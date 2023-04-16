@@ -135,6 +135,7 @@ function parse_remove_query_rule(o) {
         return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule, "pos": pos }], "exclude": exclude };
     }
 }
+const CHANGE_HEADER_RULE_FAILED = "Failed to parse change header rule.";
 function parse_change_header_rule(o) {
     let basic = Array.isArray(o['basic']) ? o['basic'].map(v => new RegExp(v, "i")) : [new RegExp(o['basic'], "i")];
     let rules = o['rules'];
@@ -142,13 +143,13 @@ function parse_change_header_rule(o) {
     /**@type {string | undefined} */
     let always_set = o['always_set'];
     if (always_set !== undefined && typeof always_set !== "string") {
-        throw Error("Failed to parse change header rule.")
+        throw Error(CHANGE_HEADER_RULE_FAILED)
     }
     /**@type {string | undefined} */
     let value = o['value'];
     if (value !== undefined) {
         if (typeof value !== "string") {
-            throw Error("Failed to parse change header rule.")
+            throw Error(CHANGE_HEADER_RULE_FAILED)
         }
     }
     if (typeof rules == "string") {
@@ -160,12 +161,12 @@ function parse_change_header_rule(o) {
             if (typeof r == "string") {
                 rrules.push(new RegExp(`^${r}$`, "i"));
             } else {
-                throw Error("Failed to parse change header rule.")
+                throw Error(CHANGE_HEADER_RULE_FAILED)
             }
         }
         return { "basic": basic, "rules": rrules, "exclude": exclude, 'value': value, "always_set": always_set }
     } else {
-        throw Error("Failed to parse change header rule.")
+        throw Error(CHANGE_HEADER_RULE_FAILED)
     }
 }
 function parse_match_rules(o) {
