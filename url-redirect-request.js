@@ -114,9 +114,10 @@ function parse_remove_query_rule(o) {
     let whitelist = o['whitelist'];
     let rules = o['rules'];
     let exclude = Array.isArray(o['exclude']) ? o['exclude'].map(v => new RegExp(v, "i")) : o['exclude'] ? [new RegExp(o['exclude'], "i")] : [];
+    let status = o['status'];
     if (typeof rules == "string") {
         let rule = new RegExp(`^(?:[^&]*&)*?(${rules}\\=[^&]*&?).*`, "i");
-        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule }], "exclude": exclude }
+        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule }], "exclude": exclude, "status": status }
     } else if (Array.isArray(rules)) {
         let rrules = [];
         for (let r of rules) {
@@ -129,11 +130,11 @@ function parse_remove_query_rule(o) {
                 rrules.push({ "rule": rule, "pos": pos });
             }
         }
-        return { "basic": basic, "whitelist": whitelist, "rules": rrules, "exclude": exclude }
+        return { "basic": basic, "whitelist": whitelist, "rules": rrules, "exclude": exclude, "status": status }
     } else {
         let rule = new RegExp(`^(?:[^&]*&)*?(${rules['rule']}\\=[^&]*&?).*`, "i");
         let pos = rules['pos'];
-        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule, "pos": pos }], "exclude": exclude };
+        return { "basic": basic, "whitelist": whitelist, "rules": [{ "rule": rule, "pos": pos }], "exclude": exclude, "status": status };
     }
 }
 const CHANGE_HEADER_RULE_FAILED = "Failed to parse change header rule.";
@@ -185,7 +186,8 @@ function parse_match_rules(o) {
                         let rule = new RegExp(i['rule'], "i");
                         let pos = i["pos"];
                         let need_decode = i['need_decode'];
-                        r.push(new MatchRule({ "rule": rule, "pos": pos, "need_decode": need_decode }));
+                        let status = i["status"];
+                        r.push(new MatchRule({ "rule": rule, "pos": pos, "need_decode": need_decode, "status": status }));
                         break;
                     case REMOVE_QUERY_RULE:
                         r.push(new MatchRule(parse_remove_query_rule(i), REMOVE_QUERY_RULE));
@@ -209,7 +211,8 @@ function parse_match_rules(o) {
                 let rule = new RegExp(o['rule'], "i");
                 let pos = o["pos"];
                 let need_decode = o['need_decode'];
-                return [new MatchRule({ "rule": rule, "pos": pos, "need_decode": need_decode })]
+                let status = o['status'];
+                return [new MatchRule({ "rule": rule, "pos": pos, "need_decode": need_decode, "status": status })]
             case REMOVE_QUERY_RULE:
                 return [new MatchRule(parse_remove_query_rule(o), REMOVE_QUERY_RULE)]
             case CHANGE_HEADER_RULE:
@@ -238,6 +241,8 @@ async function main() {
         if (r.is_always) continue;
         matched = r.match(url);
         if (matched != null) {
+            const s = r.rule["status"];
+            if (s) status = s;
             break;
         }
     }
